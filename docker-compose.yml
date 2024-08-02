@@ -2,5 +2,6 @@ version: '3'
 services:
   web:
     build: .
+    container_name: sunnyq-socketio
     ports:
       - '${PORT}:${PORT}'
