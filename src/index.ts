@@ -7,6 +7,7 @@ import express, { Express, Request, Response } from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { codetoRoomMap } from './lobby';
+import { ROOM_PHASE } from './room-phase';
 import { User } from './type';
 
 dotenv.config();
@@ -194,7 +195,7 @@ io.on('connection', (socket) => {
     const room = codetoRoomMap.get(roomCode)!;
 
     // Pause the room
-    room.phase = 'PAUSE';
+    room.phase = ROOM_PHASE.PAUSE;
 
     // Fetch other users in the room
     socket.to(roomCode).emit('room:fetch-request', 'fetch-room', room);
