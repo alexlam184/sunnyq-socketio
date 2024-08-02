@@ -20,6 +20,7 @@ const app: Express = express();
 
 app.use(cors());
 const httpServer = createServer(app);
+console.log('client_url=', client_url);
 
 const io = new Server(httpServer, {
   cors: {
