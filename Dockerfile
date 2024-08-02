@@ -1,7 +1,12 @@
 FROM node:22.1.0
 WORKDIR /app
-COPY . /app
+COPY package*.json ./
+
+
+
 RUN npm install
+COPY . .
+ENV PORT=3001
 EXPOSE 3001
 RUN npx tsc
-CMD node dist/index.js
+CMD ["npm","start"]
