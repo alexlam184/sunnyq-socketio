@@ -24,7 +24,7 @@ console.log('client_url=', client_url);
 
 const io = new Server(httpServer, {
   cors: {
-    origin: [client_url, 'https://admin.socket.io'], //docker local may not set http://localhost:3000, therefore, it cannot run in local
+    origin: [client_url, 'https://admin.socket.io', 'http://localhost:3000'], //docker local may not set http://localhost:3000, therefore, it cannot run in local
     methods: ['GET', 'POST'],
     allowedHeaders: ['my-custom-header'],
     credentials: true,
