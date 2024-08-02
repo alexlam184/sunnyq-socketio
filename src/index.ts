@@ -1,6 +1,7 @@
 // src/index.js
 
 import { instrument } from '@socket.io/admin-ui';
+import cors from 'cors';
 import dotenv from 'dotenv';
 import express, { Express, Request, Response } from 'express';
 import { createServer } from 'http';
@@ -12,13 +13,18 @@ dotenv.config();
 
 const port = process.env.PORT || 3000;
 const hostname = process.env.hostname || 'localhost';
+const client_url = process.env.client_url || 'http://localhost:3000';
 
 const app: Express = express();
+
+app.use(cors());
 const httpServer = createServer(app);
 
 const io = new Server(httpServer, {
   cors: {
-    origin: ['https://admin.socket.io'],
+    origin: [client_url, 'https://admin.socket.io'],
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['my-custom-header'],
     credentials: true,
   },
 });
