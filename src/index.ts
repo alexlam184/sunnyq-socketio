@@ -66,7 +66,7 @@ io.on('connection', (socket) => {
     room.users.map((user: User, index: number) => {
       if (user.userid === userid) {
         room.users.splice(index, 1);
-
+        room.num_of_students--;
         // Fetch other users in the room
         socket.to(roomCode).emit('room:fetch-request', 'fetch-room', room);
 
@@ -154,14 +154,29 @@ io.on('connection', (socket) => {
    * User leaves a room.
    */
   socket.on('room:leave-room', ({ roomCode }) => {
+    if (!codetoRoomMap.has(roomCode)) {
+      console.log(`Room doesn't exist`);
+      return;
+    }
+    // Leave socketIO room
     socket.leave(roomCode);
+
+    // Get room
+    const room = codetoRoomMap.get(roomCode)!;
+
+    // Update Room
+    room.users.map((user, index) => {
+      if (user.userid === socket.id) room.users.splice(index, 1);
+    });
+    room.num_of_students--;
+
     console.log(`Server: user ${socket.id} left room ${roomCode}`);
   });
 
   /**
    * Submit an answer in a room.
    */
-  socket.on('room:submit-answer', ({ roomCode, userid, answer }) => {
+  socket.on('room:submit-answer', ({ roomCode, userid, answers }) => {
     if (!codetoRoomMap.has(roomCode)) {
       console.log(`Room doesn't exist`);
       return;
@@ -177,7 +192,8 @@ io.on('connection', (socket) => {
     }
 
     // Update room
-    user.answer = answer;
+    user.answers = answers;
+
     room.num_of_answered++;
 
     // Fetch other users in the room
