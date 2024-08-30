@@ -6,8 +6,8 @@ import dotenv from 'dotenv';
 import express, { Express, Request, Response } from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+import { MESSAGE } from './enum';
 import { codetoRoomMap } from './lobby';
-import { ROOM_PHASE } from './room-phase';
 import { User } from './type';
 
 dotenv.config();
@@ -24,7 +24,7 @@ console.log('client_url=', client_url);
 
 const io = new Server(httpServer, {
   cors: {
-    origin: [client_url, 'https://admin.socket.io', 'http://localhost:3000'], //docker local may not set http://localhost:3000, therefore, it cannot run in local
+    origin: [client_url, 'https://admin.socket.io', 'http://localhost:3000'], // docker local may not set http://localhost:3000, therefore, it cannot run in local
     methods: ['GET', 'POST'],
     allowedHeaders: ['my-custom-header'],
     credentials: true,
@@ -66,7 +66,7 @@ io.on('connection', (socket) => {
     room.users.map((user: User, index: number) => {
       if (user.userid === userid) {
         room.users.splice(index, 1);
-
+        room.num_of_students--;
         // Fetch other users in the room
         socket.to(roomCode).emit('room:fetch-request', 'fetch-room', room);
 
@@ -76,7 +76,7 @@ io.on('connection', (socket) => {
     });
   };
 
-  socket.on('disconnect', () => {
+  socket.on(MESSAGE.DISCONNECT, () => {
     codetoRoomMap.forEach((room, roomCode: string) => {
       // host disconnect
       if (room.host.userid === socket.id) {
@@ -97,7 +97,7 @@ io.on('connection', (socket) => {
   /**
    * Fetch an userId.
    */
-  socket.on('user:fetch-id', (callback) => {
+  socket.on(MESSAGE.FETCH_USERID, (callback) => {
     callback(socket.id);
     console.log(`Server: User ID ${socket.id} fetched.`);
   });
@@ -105,7 +105,7 @@ io.on('connection', (socket) => {
   /**
    * Fetch a lobby.
    */
-  socket.on('lobby:fetch-lobby', (callback) => {
+  socket.on(MESSAGE.FETCH_LOBBY, (callback) => {
     callback(Array.from(codetoRoomMap.keys()));
     console.log(`Server: Lobby fetched.`);
   });
@@ -113,7 +113,7 @@ io.on('connection', (socket) => {
   /**
    * Create a new room and join it as the host.
    */
-  socket.on('lobby:host-create-room', ({ roomCode, room }) => {
+  socket.on(MESSAGE.CREATE_ROOM, ({ roomCode, room }) => {
     codetoRoomMap.set(roomCode, room);
     socket.join(roomCode); // Host join the room
     console.log(`Server: Room ${roomCode} was created.`);
@@ -122,7 +122,7 @@ io.on('connection', (socket) => {
   /**
    * Fetch a room by its code.
    */
-  socket.on('room:fetch-room', (roomCode, callback) => {
+  socket.on(MESSAGE.FETCH_ROOM, (roomCode, callback) => {
     callback(codetoRoomMap.get(roomCode));
     console.log(`Server: Room fetched.`);
   });
@@ -130,7 +130,7 @@ io.on('connection', (socket) => {
   /**
    * User joins a room.
    */
-  socket.on('room:join-room', ({ roomCode, user }) => {
+  socket.on(MESSAGE.JOIN_ROOM, ({ roomCode, user }) => {
     if (!codetoRoomMap.has(roomCode)) {
       console.log(`Room doesn't exist`);
       return;
@@ -154,14 +154,29 @@ io.on('connection', (socket) => {
    * User leaves a room.
    */
   socket.on('room:leave-room', ({ roomCode }) => {
+    if (!codetoRoomMap.has(roomCode)) {
+      console.log(`Room doesn't exist`);
+      return;
+    }
+    // Leave socketIO room
     socket.leave(roomCode);
+
+    // Get room
+    const room = codetoRoomMap.get(roomCode)!;
+
+    // Update Room
+    room.users.map((user, index) => {
+      if (user.userid === socket.id) room.users.splice(index, 1);
+    });
+    room.num_of_students--;
+
     console.log(`Server: user ${socket.id} left room ${roomCode}`);
   });
 
   /**
-   * Submit an answer in a room.
+   * Submit all answers in a room.
    */
-  socket.on('room:submit-answer', ({ roomCode, userid, answer }) => {
+  socket.on(MESSAGE.SUBMIT_ANSWER, ({ roomCode, userid, answers }) => {
     if (!codetoRoomMap.has(roomCode)) {
       console.log(`Room doesn't exist`);
       return;
@@ -177,17 +192,18 @@ io.on('connection', (socket) => {
     }
 
     // Update room
-    user.answer = answer;
+    user.answers = answers;
     room.num_of_answered++;
 
     // Fetch other users in the room
-    socket.to(roomCode).emit('room:fetch-request', 'fetch-room', room);
+    socket.to(roomCode).emit(MESSAGE.FETCH_REQUEST, 'fetch-room', room);
   });
 
   /**
-   * Pause the room.
+   * Change Room Data
    */
-  socket.on('room:pause-room', ({ roomCode }) => {
+  socket.on(MESSAGE.CHANGE_ROOM_DATA, ({ roomCode, data }) => {
+    console.log(codetoRoomMap);
     if (!codetoRoomMap.has(roomCode)) {
       console.log(`Room doesn't exist`);
       return;
@@ -195,17 +211,18 @@ io.on('connection', (socket) => {
     // Get room
     const room = codetoRoomMap.get(roomCode)!;
 
-    // Pause the room
-    room.phase = ROOM_PHASE.PAUSE;
+    // Change room data
+    Object.assign(room, data);
+    console.log(room);
 
     // Fetch other users in the room
-    socket.to(roomCode).emit('room:fetch-request', 'fetch-room', room);
+    socket.to(roomCode).emit(MESSAGE.FETCH_REQUEST, 'fetch-room', room);
   });
 
   /**
    * Delete a room.
    */
-  socket.on('room:delete-room', ({ roomCode }) => {
+  socket.on(MESSAGE.DELETE_ROOM, ({ roomCode }) => {
     deleteRoom(roomCode);
   });
 });
