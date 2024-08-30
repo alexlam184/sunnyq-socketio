@@ -193,17 +193,17 @@ io.on('connection', (socket) => {
 
     // Update room
     user.answers = answers;
-
     room.num_of_answered++;
 
     // Fetch other users in the room
-    socket.to(roomCode).emit('room:fetch-request', 'fetch-room', room);
+    socket.to(roomCode).emit(MESSAGE.FETCH_REQUEST, 'fetch-room', room);
   });
 
   /**
-   * Change Room Phase
+   * Change Room Data
    */
-  socket.on(MESSAGE.CHANGE_ROOM_PHASE, ({ roomCode, roomPhase }) => {
+  socket.on(MESSAGE.CHANGE_ROOM_DATA, ({ roomCode, data }) => {
+    console.log(codetoRoomMap);
     if (!codetoRoomMap.has(roomCode)) {
       console.log(`Room doesn't exist`);
       return;
@@ -211,11 +211,12 @@ io.on('connection', (socket) => {
     // Get room
     const room = codetoRoomMap.get(roomCode)!;
 
-    // Pause the room
-    room.phase = roomPhase;
+    // Change room data
+    Object.assign(room, data);
+    console.log(room);
 
     // Fetch other users in the room
-    socket.to(roomCode).emit('room:fetch-request', 'fetch-room', room);
+    socket.to(roomCode).emit(MESSAGE.FETCH_REQUEST, 'fetch-room', room);
   });
 
   /**
